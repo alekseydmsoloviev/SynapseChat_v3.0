@@ -3,6 +3,7 @@
 Wrapper for invoking Ollama CLI commands and scraping to manage and chat with models.
 """
 import subprocess
+import re
 from typing import List, Optional
 
 # Optional imports for remote model listing
@@ -16,11 +17,8 @@ except ImportError:
 OLLAMA_CMD = "ollama"
 
 
-def list_remote_models() -> List[str]:
-    """
-    List models available in the public Ollama registry by scraping the official library page.
-    Returns a list of model names.
-    """
+def list_remote_base_models() -> List[str]:
+    """Return base model names available from the Ollama library."""
     if not requests or not BeautifulSoup:
         raise RuntimeError(
             "Missing dependencies for remote model listing: requests, beautifulsoup4"
@@ -28,15 +26,52 @@ def list_remote_models() -> List[str]:
     url = "https://ollama.com/library"
     resp = requests.get(url)
     if resp.status_code != 200:
-        raise RuntimeError(f"Error fetching remote models page: status {resp.status_code}")
+        raise RuntimeError(
+            f"Error fetching remote models page: status {resp.status_code}"
+        )
     soup = BeautifulSoup(resp.text, "html.parser")
+
+    base_models: List[str] = []
+    for a in soup.find_all("a", href=True):
+        href = a["href"]
+        if href.startswith("/library/") and ":" not in href:
+            name = href.split("/")[-1]
+            if name and name not in base_models:
+                base_models.append(name)
+
+    return base_models
+
+
+def list_model_variants(name: str) -> List[str]:
+    """Return available parameter variants for a given model name."""
+    if not requests or not BeautifulSoup:
+        raise RuntimeError(
+            "Missing dependencies for remote model listing: requests, beautifulsoup4"
+        )
+    url = f"https://ollama.com/library/{name}"
+    resp = requests.get(url)
+    if resp.status_code != 200:
+        return []
+
+    text = resp.text
+    pattern = rf"{re.escape(name)}:[^\"'\s<]+"
+    matches = set(re.findall(pattern, text, flags=re.IGNORECASE))
+    return sorted(matches)
+
+
+def list_remote_models() -> List[str]:
+    """Return all models from the Ollama registry including parameter variations."""
+
+    base_models = list_remote_base_models()
+
     models: List[str] = []
-    for a in soup.find_all('a', href=True):
-        href = a['href']
-        if href.startswith('/library/'):
-            name = href.split('/')[-1]
-            if name and name not in models:
-                models.append(name)
+    for name in base_models:
+        variants = list_model_variants(name)
+        if variants:
+            models.extend(variants)
+        else:
+            models.append(name)
+
     return models
 
 
