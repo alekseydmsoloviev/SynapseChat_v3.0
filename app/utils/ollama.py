@@ -3,6 +3,7 @@
 Wrapper for invoking Ollama CLI commands and scraping to manage and chat with models.
 """
 import subprocess
+import re
 from typing import List, Optional
 
 # Optional imports for remote model listing
@@ -49,6 +50,7 @@ def list_remote_models() -> List[str]:
         try:
             detail = requests.get(f"https://ollama.com/library/{name}")
             if detail.status_code == 200:
+
                 soup_detail = BeautifulSoup(detail.text, "html.parser")
                 for a in soup_detail.find_all("a", href=True):
                     href = a["href"]
@@ -56,6 +58,7 @@ def list_remote_models() -> List[str]:
                         variant = href.split("/")[-1]
                         if variant not in variants:
                             variants.append(variant)
+
         except Exception:
             pass
 
