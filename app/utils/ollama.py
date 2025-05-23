@@ -17,6 +17,7 @@ except ImportError:
 OLLAMA_CMD = "ollama"
 
 
+
 def list_remote_models() -> List[str]:
     """Return models available from the Ollama registry including parameter variations.
 
@@ -25,6 +26,7 @@ def list_remote_models() -> List[str]:
     for all available variants (e.g. ``gemma3:1b``). If no variants are found,
     the base name is returned.
     """
+
     if not requests or not BeautifulSoup:
         raise RuntimeError(
             "Missing dependencies for remote model listing: requests, beautifulsoup4"
@@ -32,16 +34,21 @@ def list_remote_models() -> List[str]:
     url = "https://ollama.com/library"
     resp = requests.get(url)
     if resp.status_code != 200:
-        raise RuntimeError(f"Error fetching remote models page: status {resp.status_code}")
+        raise RuntimeError(
+            f"Error fetching remote models page: status {resp.status_code}"
+        )
     soup = BeautifulSoup(resp.text, "html.parser")
 
     base_models: List[str] = []
     for a in soup.find_all("a", href=True):
         href = a["href"]
+
         if href.startswith("/library/"):
+
             name = href.split("/")[-1]
             if name and name not in base_models:
                 base_models.append(name)
+
 
     models: List[str] = []
 
@@ -57,6 +64,7 @@ def list_remote_models() -> List[str]:
                 variants.extend(sorted(matches))
         except Exception:
             pass
+
 
         if variants:
             models.extend(variants)
