@@ -17,9 +17,12 @@ OLLAMA_CMD = "ollama"
 
 
 def list_remote_models() -> List[str]:
-    """
-    List models available in the public Ollama registry by scraping the official library page.
-    Returns a list of model names.
+    """Return models available from the Ollama registry including parameter variations.
+
+    The function scrapes ``https://ollama.com/library`` to obtain the list of
+    base model names. For each model, its dedicated page is fetched to search
+    for all available variants (e.g. ``gemma3:1b``). If no variants are found,
+    the base name is returned.
     """
     if not requests or not BeautifulSoup:
         raise RuntimeError(
@@ -30,13 +33,37 @@ def list_remote_models() -> List[str]:
     if resp.status_code != 200:
         raise RuntimeError(f"Error fetching remote models page: status {resp.status_code}")
     soup = BeautifulSoup(resp.text, "html.parser")
+
+    base_models: List[str] = []
+    for a in soup.find_all("a", href=True):
+        href = a["href"]
+        if href.startswith("/library/"):
+            name = href.split("/")[-1]
+            if name and name not in base_models:
+                base_models.append(name)
+
     models: List[str] = []
-    for a in soup.find_all('a', href=True):
-        href = a['href']
-        if href.startswith('/library/'):
-            name = href.split('/')[-1]
-            if name and name not in models:
-                models.append(name)
+
+    for name in base_models:
+        variants = []
+        try:
+            detail = requests.get(f"https://ollama.com/library/{name}")
+            if detail.status_code == 200:
+                soup_detail = BeautifulSoup(detail.text, "html.parser")
+                for a in soup_detail.find_all("a", href=True):
+                    href = a["href"]
+                    if href.startswith(f"/library/{name}:"):
+                        variant = href.split("/")[-1]
+                        if variant not in variants:
+                            variants.append(variant)
+        except Exception:
+            pass
+
+        if variants:
+            models.extend(variants)
+        else:
+            models.append(name)
+
     return models
 
 
