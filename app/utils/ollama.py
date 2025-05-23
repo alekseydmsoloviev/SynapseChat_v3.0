@@ -17,8 +17,10 @@ except ImportError:
 OLLAMA_CMD = "ollama"
 
 
+
 def list_remote_base_models() -> List[str]:
     """Return base model names available from the Ollama library."""
+
     if not requests or not BeautifulSoup:
         raise RuntimeError(
             "Missing dependencies for remote model listing: requests, beautifulsoup4"
@@ -34,10 +36,13 @@ def list_remote_base_models() -> List[str]:
     base_models: List[str] = []
     for a in soup.find_all("a", href=True):
         href = a["href"]
+
         if href.startswith("/library/") and ":" not in href:
+
             name = href.split("/")[-1]
             if name and name not in base_models:
                 base_models.append(name)
+
 
     return base_models
 
@@ -67,6 +72,7 @@ def list_remote_models() -> List[str]:
     models: List[str] = []
     for name in base_models:
         variants = list_model_variants(name)
+
         if variants:
             models.extend(variants)
         else:
